@@ -8,6 +8,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
 import java.util.function.Function;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -47,5 +49,17 @@ public class VentasService {
 
     public Mono<Void> eliminarVenta(Long id) {
         return ventaRepository.deleteById(id);
+    }
+
+    public Flux<Map<String, Object>> ventasPorProducto() {
+        return ventaRepository.findAll()
+            .groupBy(Venta::getProducto)
+            .flatMap(group -> group.reduce(0.0, (acc, venta) -> acc + venta.getTotal())
+                .map(total -> {
+                    Map<String, Object> resultado = new HashMap<>();
+                    resultado.put("producto", group.key());
+                    resultado.put("totalVentas", total);
+                    return resultado;
+                }));
     }
 }

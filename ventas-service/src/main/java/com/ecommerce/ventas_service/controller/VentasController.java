@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ventas")
@@ -36,5 +37,10 @@ public class VentasController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public Mono<Void> eliminarVenta(@PathVariable Long id) {
         return ventasService.eliminarVenta(id);
+    }
+
+    @GetMapping("/analytics/por-producto")
+    public Flux<Map<String, Object>> ventasPorProducto() {
+        return ventasService.ventasPorProducto();
     }
 }
