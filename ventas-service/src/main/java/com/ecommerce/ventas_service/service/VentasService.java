@@ -1,7 +1,9 @@
 package com.ecommerce.ventas_service.service;
 
 import com.ecommerce.ventas_service.model.Venta;
+import com.ecommerce.ventas_service.model.VentaLog;
 import com.ecommerce.ventas_service.repository.VentaRepository;
+import com.ecommerce.ventas_service.repository.VentaLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -16,6 +18,7 @@ import java.util.HashMap;
 public class VentasService {
 
     private final VentaRepository ventaRepository;
+    private final VentaLogRepository ventaLogRepository;
 
     // Función para calcular impuesto (19% IVA) - programación funcional
     private final Function<Double, Double> calcularImpuesto = 
@@ -44,7 +47,17 @@ public class VentasService {
         venta.setTotal(total);
         venta.setFecha(LocalDateTime.now());
 
-        return ventaRepository.save(venta);
+        return ventaRepository.save(venta)
+            .flatMap(ventaGuardada -> {
+                VentaLog log = new VentaLog();
+                log.setProducto(ventaGuardada.getProducto());
+                log.setCantidad(ventaGuardada.getCantidad());
+                log.setTotal(ventaGuardada.getTotal());
+                log.setEstado("COMPLETADA");
+                log.setFecha(LocalDateTime.now());
+                return ventaLogRepository.save(log)
+                    .thenReturn(ventaGuardada);
+            });
     }
 
     public Mono<Void> eliminarVenta(Long id) {
@@ -53,7 +66,7 @@ public class VentasService {
 
     public Flux<Map<String, Object>> ventasPorProducto() {
         return ventaRepository.findAll()
-            .groupBy(Venta::getProducto)
+            .groupBy(v -> v.getProducto())
             .flatMap(group -> group.reduce(0.0, (acc, venta) -> acc + venta.getTotal())
                 .map(total -> {
                     Map<String, Object> resultado = new HashMap<>();
@@ -61,5 +74,9 @@ public class VentasService {
                     resultado.put("totalVentas", total);
                     return resultado;
                 }));
+    }
+
+    public Flux<VentaLog> obtenerLogs() {
+        return ventaLogRepository.findAll();
     }
 }

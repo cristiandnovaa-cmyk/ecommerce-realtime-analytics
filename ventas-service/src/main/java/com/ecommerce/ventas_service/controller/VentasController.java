@@ -1,6 +1,7 @@
 package com.ecommerce.ventas_service.controller;
 
 import com.ecommerce.ventas_service.model.Venta;
+import com.ecommerce.ventas_service.model.VentaLog;
 import com.ecommerce.ventas_service.service.VentasService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -42,5 +43,10 @@ public class VentasController {
     @GetMapping("/analytics/por-producto")
     public Flux<Map<String, Object>> ventasPorProducto() {
         return ventasService.ventasPorProducto();
+    }
+
+    @GetMapping("/logs")
+    public Flux<VentaLog> obtenerLogs() {
+        return ventasService.obtenerLogs();
     }
 }
