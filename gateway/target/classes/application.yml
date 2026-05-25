@@ -1,10 +1,8 @@
 server:
   port: 8080
-
 spring:
   application:
     name: gateway
-
   cloud:
     gateway:
       globalcors:
@@ -18,18 +16,15 @@ spring:
               - DELETE
               - OPTIONS
             allowedHeaders: "*"
-
       routes:
         - id: ventas-service
-          uri: http://localhost:8081
+          uri: http://ventas-service:8081
           predicates:
             - Path=/ventas/**
-
         - id: inventario-service
-          uri: http://localhost:8082
+          uri: http://inventario-service:8082
           predicates:
             - Path=/inventario/**
-
 management:
   endpoints:
     web:
