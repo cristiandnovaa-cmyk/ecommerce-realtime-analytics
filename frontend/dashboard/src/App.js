@@ -8,6 +8,8 @@ function App() {
   const [ventas, setVentas] = useState([]);
   const [inventario, setInventario] = useState([]);
   const [nuevaVenta, setNuevaVenta] = useState({ producto: "", cantidad: "", precioUnitario: "" });
+  const [error, setError] = useState("");
+  const [exito, setExito] = useState("");
 
   useEffect(() => {
     obtenerVentas();
@@ -29,6 +31,28 @@ function App() {
   };
 
   const crearVenta = async () => {
+    setError("");
+    setExito("");
+
+    if (!nuevaVenta.producto || !nuevaVenta.cantidad || !nuevaVenta.precioUnitario) {
+      setError("Por favor completa todos los campos.");
+      return;
+    }
+
+    const productoEnInventario = inventario.find(
+      p => p.nombre.toLowerCase() === nuevaVenta.producto.toLowerCase()
+    );
+
+    if (!productoEnInventario) {
+      setError(`El producto "${nuevaVenta.producto}" no existe en el inventario.`);
+      return;
+    }
+
+    if (productoEnInventario.stock < parseInt(nuevaVenta.cantidad)) {
+      setError(`Stock insuficiente. Solo hay ${productoEnInventario.stock} unidades disponibles.`);
+      return;
+    }
+
     try {
       await axios.post(`${API_URL}/ventas`, {
         producto: nuevaVenta.producto,
@@ -36,15 +60,43 @@ function App() {
         precioUnitario: parseFloat(nuevaVenta.precioUnitario)
       });
       setNuevaVenta({ producto: "", cantidad: "", precioUnitario: "" });
+      setExito("Venta registrada exitosamente.");
       obtenerVentas();
+      obtenerInventario();
+    } catch (error) {
+      setError("Error al registrar la venta.");
+    }
+  };
+
+  const eliminarVenta = async (venta) => {
+    try {
+      // Restaurar stock en inventario
+      const productoEnInventario = inventario.find(
+        p => p.nombre.toLowerCase() === venta.producto.toLowerCase()
+      );
+      if (productoEnInventario) {
+        await axios.put(
+          `${API_URL}/inventario/${productoEnInventario.id}/stock?cantidad=${-venta.cantidad}`
+        );
+      }
+      // Eliminar venta
+      await axios.delete(`${API_URL}/ventas/${venta.id}`);
+      obtenerVentas();
+      obtenerInventario();
     } catch (error) { console.log(error); }
   };
 
   const actualizarStock = async (id, stockActual) => {
     try {
-      const nuevoStock = stockActual + 1;
       await axios.put(`${API_URL}/inventario/${id}/stock?cantidad=1`);
-      setInventario(inventario.map((p) => p.id === id ? { ...p, stock: nuevoStock } : p));
+      setInventario(inventario.map((p) => p.id === id ? { ...p, stock: stockActual - 1 } : p));
+    } catch (error) { console.log(error); }
+  };
+
+  const eliminarProducto = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/inventario/${id}`);
+      setInventario(inventario.filter(p => p.id !== id));
     } catch (error) { console.log(error); }
   };
 
@@ -54,6 +106,8 @@ function App() {
 
       <div style={{ background: "white", padding: "20px", borderRadius: "10px", marginBottom: "30px", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
         <h2>Registrar Venta</h2>
+        {error && <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "10px", borderRadius: "5px", marginBottom: "10px" }}>{error}</div>}
+        {exito && <div style={{ background: "#dcfce7", color: "#15803d", padding: "10px", borderRadius: "5px", marginBottom: "10px" }}>{exito}</div>}
         <input type="text" placeholder="Producto" value={nuevaVenta.producto}
           onChange={(e) => setNuevaVenta({ ...nuevaVenta, producto: e.target.value })}
           style={{ padding: "10px", marginRight: "10px", marginTop: "10px" }} />
@@ -78,15 +132,22 @@ function App() {
               <th style={{ padding: "10px" }}>Producto</th>
               <th style={{ padding: "10px" }}>Cantidad</th>
               <th style={{ padding: "10px" }}>Total</th>
+              <th style={{ padding: "10px" }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {ventas.map((venta, index) => (
-              <tr key={index}>
+              <tr key={index} style={{ background: index % 2 === 0 ? "#f9fafb" : "white" }}>
                 <td style={{ padding: "10px", border: "1px solid #ccc" }}>{venta.id}</td>
                 <td style={{ padding: "10px", border: "1px solid #ccc" }}>{venta.producto}</td>
                 <td style={{ padding: "10px", border: "1px solid #ccc" }}>{venta.cantidad}</td>
-                <td style={{ padding: "10px", border: "1px solid #ccc" }}>{venta.total}</td>
+                <td style={{ padding: "10px", border: "1px solid #ccc" }}>${venta.total?.toLocaleString()}</td>
+                <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+                  <button onClick={() => eliminarVenta(venta)}
+                    style={{ padding: "6px 12px", background: "#dc2626", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}>
+                    Eliminar
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -113,20 +174,32 @@ function App() {
             <tr style={{ background: "#16a34a", color: "white" }}>
               <th style={{ padding: "10px" }}>ID</th>
               <th style={{ padding: "10px" }}>Producto</th>
+              <th style={{ padding: "10px" }}>Precio</th>
               <th style={{ padding: "10px" }}>Stock</th>
-              <th style={{ padding: "10px" }}>Accion</th>
+              <th style={{ padding: "10px" }}>Categoría</th>
+              <th style={{ padding: "10px" }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {inventario.map((producto, index) => (
-              <tr key={index}>
+              <tr key={index} style={{ background: index % 2 === 0 ? "#f9fafb" : "white" }}>
                 <td style={{ padding: "10px", border: "1px solid #ccc" }}>{producto.id}</td>
                 <td style={{ padding: "10px", border: "1px solid #ccc" }}>{producto.nombre}</td>
-                <td style={{ padding: "10px", border: "1px solid #ccc" }}>{producto.stock}</td>
+                <td style={{ padding: "10px", border: "1px solid #ccc" }}>${producto.precio?.toLocaleString()}</td>
+                <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+                  <span style={{ color: producto.stock <= 2 ? "#b91c1c" : "#15803d", fontWeight: "bold" }}>
+                    {producto.stock}
+                  </span>
+                </td>
+                <td style={{ padding: "10px", border: "1px solid #ccc" }}>{producto.categoria}</td>
                 <td style={{ padding: "10px", border: "1px solid #ccc" }}>
                   <button onClick={() => actualizarStock(producto.id, producto.stock)}
-                    style={{ padding: "8px 15px", background: "#16a34a", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}>
-                    + Stock
+                    style={{ padding: "6px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", marginRight: "5px" }}>
+                    - Stock
+                  </button>
+                  <button onClick={() => eliminarProducto(producto.id)}
+                    style={{ padding: "6px 12px", background: "#dc2626", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}>
+                    Eliminar
                   </button>
                 </td>
               </tr>

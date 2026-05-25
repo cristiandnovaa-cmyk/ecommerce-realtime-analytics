@@ -6,6 +6,7 @@ import com.ecommerce.ventas_service.repository.VentaRepository;
 import com.ecommerce.ventas_service.repository.VentaLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ public class VentasService {
 
     private final VentaRepository ventaRepository;
     private final VentaLogRepository ventaLogRepository;
+    private final WebClient webClient = WebClient.create("http://localhost:8082");
 
     // Función para calcular impuesto (19% IVA) - programación funcional
     private final Function<Double, Double> calcularImpuesto = 
@@ -49,13 +51,32 @@ public class VentasService {
 
         return ventaRepository.save(venta)
             .flatMap(ventaGuardada -> {
+                // Guardar log en MongoDB
                 VentaLog log = new VentaLog();
                 log.setProducto(ventaGuardada.getProducto());
                 log.setCantidad(ventaGuardada.getCantidad());
                 log.setTotal(ventaGuardada.getTotal());
                 log.setEstado("COMPLETADA");
                 log.setFecha(LocalDateTime.now());
+
+                // Buscar producto en inventario por nombre y reducir stock
+                Mono<Void> actualizarInventario = webClient.get()
+                    .uri("/inventario")
+                    .retrieve()
+                    .bodyToFlux(Map.class)
+                    .filter(p -> ventaGuardada.getProducto().equalsIgnoreCase((String) p.get("nombre")))
+                    .next()
+                    .flatMap(producto -> {
+                        String idProducto = (String) producto.get("id");
+                        return webClient.put()
+                            .uri("/inventario/" + idProducto + "/stock?cantidad=" + ventaGuardada.getCantidad())
+                            .retrieve()
+                            .bodyToMono(Void.class);
+                    })
+                    .onErrorResume(e -> Mono.empty());
+
                 return ventaLogRepository.save(log)
+                    .then(actualizarInventario)
                     .thenReturn(ventaGuardada);
             });
     }
