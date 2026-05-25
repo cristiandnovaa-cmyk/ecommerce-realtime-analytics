@@ -10,6 +10,9 @@ function App() {
   const [nuevaVenta, setNuevaVenta] = useState({ productoId: "", cantidad: "" });
   const [error, setError] = useState("");
   const [exito, setExito] = useState("");
+  const [nuevoProducto, setNuevoProducto] = useState({ nombre: "", precio: "", stock: "", categoria: "", categoriaCustom: "" });
+  const [errorProducto, setErrorProducto] = useState("");
+  const [exitoProducto, setExitoProducto] = useState("");
 
   useEffect(() => {
     obtenerVentas();
@@ -28,6 +31,11 @@ function App() {
       const respuesta = await axios.get(`${API_URL}/inventario`);
       setInventario(respuesta.data);
     } catch (error) { console.log(error); }
+  };
+
+  const formatearPrecio = (valor) => {
+    const soloNumeros = valor.replace(/\D/g, "");
+    return soloNumeros.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
   const crearVenta = async () => {
@@ -82,10 +90,10 @@ function App() {
     } catch (error) { console.log(error); }
   };
 
-  const agregarStock = async (id, stockActual) => {
+ const agregarStock = async (id) => {
     try {
       await axios.put(`${API_URL}/inventario/${id}/stock?cantidad=-1`);
-      setInventario(inventario.map((p) => p.id === id ? { ...p, stock: stockActual + 1 } : p));
+      obtenerInventario();
     } catch (error) { console.log(error); }
   };
 
@@ -96,12 +104,92 @@ function App() {
     } catch (error) { console.log(error); }
   };
 
+  const crearProducto = async () => {
+    setErrorProducto("");
+    setExitoProducto("");
+
+    const categoriaFinal = nuevoProducto.categoria === "__nueva__"
+      ? nuevoProducto.categoriaCustom
+      : nuevoProducto.categoria;
+
+    if (!nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.stock || !categoriaFinal) {
+      setErrorProducto("Por favor completa todos los campos.");
+      return;
+    }
+
+    try {
+      await axios.post(`${API_URL}/inventario`, {
+        nombre: nuevoProducto.nombre,
+        precio: parseFloat(nuevoProducto.precio.replace(/\./g, "")),
+        stock: parseInt(nuevoProducto.stock),
+        categoria: categoriaFinal
+      });
+      setNuevoProducto({ nombre: "", precio: "", stock: "", categoria: "", categoriaCustom: "" });
+      setExitoProducto(`Producto "${nuevoProducto.nombre}" agregado al inventario.`);
+      obtenerInventario();
+    } catch (error) {
+      setErrorProducto("Error al crear el producto.");
+    }
+  };
+
+  const categoriasExistentes = [...new Set(inventario.map(p => p.categoria).filter(Boolean))];
   const productoSeleccionado = inventario.find(p => p.id === nuevaVenta.productoId);
+  const inputStyle = { padding: "10px", borderRadius: "5px", border: "1px solid #ccc", minWidth: "140px" };
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial", background: "#e5e7eb", minHeight: "100vh" }}>
       <h1 style={{ color: "#2563eb", textAlign: "center", marginBottom: "30px" }}>Dashboard Ecommerce</h1>
 
+      {/* Agregar Producto */}
+      <div style={{ background: "white", padding: "20px", borderRadius: "10px", marginBottom: "30px", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
+        <h2>Agregar Producto al Inventario</h2>
+        {errorProducto && <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "10px", borderRadius: "5px", marginBottom: "10px" }}>{errorProducto}</div>}
+        {exitoProducto && <div style={{ background: "#dcfce7", color: "#15803d", padding: "10px", borderRadius: "5px", marginBottom: "10px" }}>{exitoProducto}</div>}
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+          <input
+            type="text"
+            placeholder="Nombre del producto"
+            value={nuevoProducto.nombre}
+            onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })}
+            style={inputStyle} />
+          <input
+            type="text"
+            placeholder="Precio (ej: 1.000.000)"
+            value={nuevoProducto.precio}
+            onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: formatearPrecio(e.target.value) })}
+            style={{ ...inputStyle, minWidth: "160px" }} />
+          <input
+            type="number"
+            placeholder="Stock inicial"
+            value={nuevoProducto.stock}
+            onChange={(e) => setNuevoProducto({ ...nuevoProducto, stock: e.target.value })}
+            style={{ ...inputStyle, minWidth: "110px" }} />
+          <select
+            value={nuevoProducto.categoria}
+            onChange={(e) => setNuevoProducto({ ...nuevoProducto, categoria: e.target.value, categoriaCustom: "" })}
+            style={{ ...inputStyle, minWidth: "170px" }}>
+            <option value="">Selecciona categoría</option>
+            {categoriasExistentes.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+            <option value="__nueva__">+ Nueva categoría...</option>
+          </select>
+          {nuevoProducto.categoria === "__nueva__" && (
+            <input
+              type="text"
+              placeholder="Escribe la categoría"
+              value={nuevoProducto.categoriaCustom}
+              onChange={(e) => setNuevoProducto({ ...nuevoProducto, categoriaCustom: e.target.value })}
+              style={inputStyle} />
+          )}
+          <button onClick={crearProducto}
+            style={{ padding: "10px 20px", background: "#16a34a", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}>
+            Agregar Producto
+          </button>
+        </div>
+      </div>
+
+      {/* Registrar Venta */}
       <div style={{ background: "white", padding: "20px", borderRadius: "10px", marginBottom: "30px", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
         <h2>Registrar Venta</h2>
         {error && <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "10px", borderRadius: "5px", marginBottom: "10px" }}>{error}</div>}
@@ -133,6 +221,7 @@ function App() {
         </div>
       </div>
 
+      {/* Tabla Ventas */}
       <div style={{ background: "white", padding: "20px", borderRadius: "10px", marginBottom: "30px", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
         <h2>Ventas</h2>
         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
@@ -170,6 +259,7 @@ function App() {
         </table>
       </div>
 
+      {/* Gráfica */}
       <div style={{ background: "white", padding: "20px", borderRadius: "10px", marginBottom: "30px", boxShadow: "0 0 10px rgba(0,0,0,0.1)", height: "400px" }}>
         <h2>Grafica de Ventas</h2>
         <ResponsiveContainer width="100%" height="100%">
@@ -183,6 +273,7 @@ function App() {
         </ResponsiveContainer>
       </div>
 
+      {/* Inventario */}
       <div style={{ background: "white", padding: "20px", borderRadius: "10px", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
         <h2>Inventario</h2>
         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
@@ -207,7 +298,7 @@ function App() {
                 </td>
                 <td style={{ padding: "10px", border: "1px solid #ccc" }}>{producto.categoria}</td>
                 <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                  <button onClick={() => agregarStock(producto.id, producto.stock)}
+                  <button onClick={() => agregarStock(producto.id)}
                     style={{ padding: "6px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", marginRight: "5px" }}>
                     + Stock
                   </button>
