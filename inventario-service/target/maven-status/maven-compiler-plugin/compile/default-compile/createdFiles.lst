@@ -1,0 +1,5 @@
+com\ecommerce\inventario_service\repository\ProductoRepository.class
+com\ecommerce\inventario_service\service\InventarioService.class
+com\ecommerce\inventario_service\InventarioServiceApplication.class
+com\ecommerce\inventario_service\controller\InventarioController.class
+com\ecommerce\inventario_service\model\Producto.class
