@@ -1,4 +1,4 @@
-package com.ecommerce.inventario_service.service;
+﻿package com.ecommerce.inventario_service.service;
 
 import com.ecommerce.inventario_service.model.Producto;
 import com.ecommerce.inventario_service.repository.ProductoRepository;
@@ -14,7 +14,6 @@ public class InventarioService {
 
     private final ProductoRepository productoRepository;
 
-    // Función para aplicar descuento - programación funcional
     private final Function<Double, Double> aplicarDescuento =
         precio -> precio * 0.90;
 

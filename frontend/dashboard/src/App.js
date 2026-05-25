@@ -16,21 +16,21 @@ function App() {
 
   const obtenerVentas = async () => {
     try {
-      const respuesta = await axios.get(\/ventas);
+      const respuesta = await axios.get(`${API_URL}/ventas`);
       setVentas(respuesta.data);
     } catch (error) { console.log(error); }
   };
 
   const obtenerInventario = async () => {
     try {
-      const respuesta = await axios.get(\/inventario);
+      const respuesta = await axios.get(`${API_URL}/inventario`);
       setInventario(respuesta.data);
     } catch (error) { console.log(error); }
   };
 
   const crearVenta = async () => {
     try {
-      await axios.post(\/ventas, {
+      await axios.post(`${API_URL}/ventas`, {
         producto: nuevaVenta.producto,
         cantidad: parseInt(nuevaVenta.cantidad),
         precioUnitario: parseFloat(nuevaVenta.precioUnitario)
@@ -43,7 +43,7 @@ function App() {
   const actualizarStock = async (id, stockActual) => {
     try {
       const nuevoStock = stockActual + 1;
-      await axios.put(\/inventario/\/stock, { stock: nuevoStock });
+      await axios.put(`${API_URL}/inventario/${id}/stock?cantidad=1`);
       setInventario(inventario.map((p) => p.id === id ? { ...p, stock: nuevoStock } : p));
     } catch (error) { console.log(error); }
   };

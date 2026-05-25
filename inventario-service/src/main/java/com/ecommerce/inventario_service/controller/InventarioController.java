@@ -1,4 +1,4 @@
-package com.ecommerce.inventario_service.controller;
+﻿package com.ecommerce.inventario_service.controller;
 
 import com.ecommerce.inventario_service.model.Producto;
 import com.ecommerce.inventario_service.service.InventarioService;
@@ -11,7 +11,6 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/inventario")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class InventarioController {
 
     private final InventarioService inventarioService;
