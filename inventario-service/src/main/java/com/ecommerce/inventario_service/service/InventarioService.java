@@ -32,7 +32,7 @@ public class InventarioService {
     public Mono<Producto> actualizarStock(String id, int cantidad) {
         return productoRepository.findById(id)
             .flatMap(producto -> {
-                producto.setStock(producto.getStock() - cantidad);
+                producto.setStock(producto.getStock() + cantidad); // ← corregido: + en lugar de -
                 return productoRepository.save(producto);
             });
     }
