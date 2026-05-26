@@ -51,7 +51,6 @@ const styles = {
   statValue: { fontSize: "28px", fontWeight: "700", color: UNILIBRE_RED },
   statLabel: { fontSize: "13px", color: "#64748b", marginTop: "4px" },
   footer: { textAlign: "center", color: "#334155", fontSize: "12px", marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #1e3a5f" },
-  // Modal
   modalOverlay: { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 },
   modalBox: { background: "white", color: "#111", borderRadius: "12px", padding: "40px", width: "480px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" },
   modalTitle: { textAlign: "center", fontSize: "20px", fontWeight: "700", marginBottom: "4px", color: UNILIBRE_RED },
@@ -71,8 +70,6 @@ function ModalFactura({ venta, onClose }) {
 
   const descargarPDF = () => {
     const doc = new jsPDF();
-
-    // Encabezado
     doc.setFillColor(200, 16, 46);
     doc.rect(0, 0, 210, 36, "F");
     doc.setTextColor(255, 255, 255);
@@ -83,8 +80,6 @@ function ModalFactura({ venta, onClose }) {
     doc.setFont("helvetica", "normal");
     doc.text("Universidad Libre de Colombia", 14, 25);
     doc.text(`Factura N°: ${nroFactura}`, 14, 32);
-
-    // Info factura
     doc.setTextColor(30, 30, 30);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
@@ -94,41 +89,28 @@ function ModalFactura({ venta, onClose }) {
     doc.text(`Fecha: ${fecha}`, 14, 58);
     doc.text(`Hora: ${hora}`, 14, 64);
     doc.text(`N° Factura: ${nroFactura}`, 14, 70);
-
-    // Línea separadora
     doc.setDrawColor(200, 16, 46);
     doc.setLineWidth(0.5);
     doc.line(14, 76, 196, 76);
-
-    // Detalle
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Detalle de la compra", 14, 84);
-
     const filas = [
-      ["Producto",      venta.producto],
-      ["Cantidad",      String(venta.cantidad)],
+      ["Producto",        venta.producto],
+      ["Cantidad",        String(venta.cantidad)],
       ["Precio unitario", `$${venta.precioUnitario?.toLocaleString()}`],
-      ["Impuesto",      `$${venta.impuesto?.toLocaleString()}`],
-      ["Descuento",     `$${venta.descuento?.toLocaleString()}`],
+      ["Impuesto",        `$${venta.impuesto?.toLocaleString()}`],
+      ["Descuento",       `$${venta.descuento?.toLocaleString()}`],
     ];
-
     let y = 92;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     filas.forEach(([label, valor], i) => {
-      if (i % 2 === 0) {
-        doc.setFillColor(245, 245, 245);
-        doc.rect(14, y - 4, 182, 8, "F");
-      }
-      doc.setTextColor(80, 80, 80);
-      doc.text(label, 18, y + 1);
-      doc.setTextColor(30, 30, 30);
-      doc.text(valor, 140, y + 1);
+      if (i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(14, y - 4, 182, 8, "F"); }
+      doc.setTextColor(80, 80, 80); doc.text(label, 18, y + 1);
+      doc.setTextColor(30, 30, 30); doc.text(valor, 140, y + 1);
       y += 10;
     });
-
-    // Total
     doc.setFillColor(200, 16, 46);
     doc.rect(14, y, 182, 12, "F");
     doc.setTextColor(255, 255, 255);
@@ -136,15 +118,12 @@ function ModalFactura({ venta, onClose }) {
     doc.setFontSize(12);
     doc.text("TOTAL", 18, y + 8);
     doc.text(`$${venta.total?.toLocaleString()}`, 140, y + 8);
-
-    // Pie
     y += 24;
     doc.setTextColor(120, 120, 120);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text("Gracias por su compra.", 105, y, { align: "center" });
     doc.text("Universidad Libre de Colombia — Proyecto de Programación 2026", 105, y + 6, { align: "center" });
-
     doc.save(`factura-${nroFactura}.pdf`);
   };
 
@@ -160,7 +139,6 @@ function ModalFactura({ venta, onClose }) {
         </div>
         <p style={styles.modalTitle}>Factura de Venta</p>
         <p style={styles.modalSub}>Universidad Libre de Colombia<br />{fecha} — {hora}</p>
-
         <div style={{ background: "#f8fafc", borderRadius: "8px", padding: "16px", marginBottom: "8px" }}>
           <div style={styles.facturaRow}><span style={{ color: "#64748b" }}>Producto</span><strong>{venta.producto}</strong></div>
           <div style={styles.facturaRow}><span style={{ color: "#64748b" }}>Cantidad</span><span>{venta.cantidad}</span></div>
@@ -169,9 +147,7 @@ function ModalFactura({ venta, onClose }) {
           <div style={styles.facturaRow}><span style={{ color: "#64748b" }}>Descuento</span><span>${venta.descuento?.toLocaleString()}</span></div>
           <div style={styles.facturaTotal}><span>TOTAL</span><span>${venta.total?.toLocaleString()}</span></div>
         </div>
-
         <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8" }}>Gracias por su compra 🎉</p>
-
         <div style={styles.modalBtns}>
           <button onClick={descargarPDF} style={{ ...styles.btnPrimary, fontSize: "13px" }}>⬇️ Descargar PDF</button>
           <button onClick={imprimir}     style={{ ...styles.btnFactura, padding: "10px 20px" }}>🖨️ Imprimir</button>
@@ -237,32 +213,37 @@ function App() {
   const [nuevoProducto, setNuevoProducto] = useState({ nombre: "", precio: "", stock: "", categoria: "", categoriaCustom: "" });
   const [errorProducto, setErrorProducto] = useState("");
   const [exitoProducto, setExitoProducto] = useState("");
-  const [facturaVenta, setFacturaVenta] = useState(null); // venta a mostrar en modal
+  const [facturaVenta, setFacturaVenta] = useState(null);
 
   useEffect(() => { if (sesion) { obtenerVentas(); obtenerInventario(); } }, [sesion]);
 
-  const obtenerVentas    = async () => { try { const r = await axios.get(`${API_URL}/ventas`);     setVentas(r.data);    } catch (e) { console.log(e); } };
+  const obtenerVentas     = async () => { try { const r = await axios.get(`${API_URL}/ventas`);     setVentas(r.data);    } catch (e) { console.log(e); } };
   const obtenerInventario = async () => { try { const r = await axios.get(`${API_URL}/inventario`); setInventario(r.data); } catch (e) { console.log(e); } };
 
   const formatearPrecio = (valor) => valor.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
+  // ── Helper: muestra mensaje y lo borra tras 3 segundos ──
+  const mostrarMensaje = (setter, mensaje) => {
+    setter(mensaje);
+    setTimeout(() => setter(""), 3000);
+  };
+
   const crearVenta = async () => {
     setError(""); setExito("");
-    if (!nuevaVenta.productoId || !nuevaVenta.cantidad) { setError("Selecciona un producto e ingresa la cantidad."); return; }
+    if (!nuevaVenta.productoId || !nuevaVenta.cantidad) { mostrarMensaje(setError, "Selecciona un producto e ingresa la cantidad."); return; }
     const cantidad = parseInt(nuevaVenta.cantidad);
-    if (isNaN(cantidad) || cantidad <= 0) { setError("La cantidad debe ser un número mayor a 0."); return; }
+    if (isNaN(cantidad) || cantidad <= 0) { mostrarMensaje(setError, "La cantidad debe ser un número mayor a 0."); return; }
     const p = inventario.find(p => p.id === nuevaVenta.productoId);
-    if (!p) { setError("Producto no encontrado."); return; }
-    if (p.stock < cantidad) { setError(`Stock insuficiente. Solo hay ${p.stock} unidades disponibles.`); return; }
+    if (!p) { mostrarMensaje(setError, "Producto no encontrado."); return; }
+    if (p.stock < cantidad) { mostrarMensaje(setError, `Stock insuficiente. Solo hay ${p.stock} unidades disponibles.`); return; }
     try {
       const respuesta = await axios.post(`${API_URL}/ventas`, { producto: p.nombre, cantidad, precioUnitario: p.precio });
       setNuevaVenta({ productoId: "", cantidad: "" });
-      setExito("✅ Venta registrada. Puedes descargar tu factura.");
+      mostrarMensaje(setExito, "✅ Venta registrada. Puedes descargar tu factura.");
       await obtenerVentas();
       await obtenerInventario();
-      // Abrir factura automáticamente tras la venta
       setFacturaVenta(respuesta.data);
-    } catch (e) { setError("Error al registrar la venta."); }
+    } catch (e) { mostrarMensaje(setError, "Error al registrar la venta."); }
   };
 
   const eliminarVenta = async (venta) => {
@@ -285,8 +266,8 @@ function App() {
   const crearProducto = async () => {
     setErrorProducto(""); setExitoProducto("");
     const categoriaFinal = nuevoProducto.categoria === "__nueva__" ? nuevoProducto.categoriaCustom : nuevoProducto.categoria;
-    if (!nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.stock || !categoriaFinal) { setErrorProducto("Completa todos los campos."); return; }
-    if (parseInt(nuevoProducto.stock) <= 0) { setErrorProducto("El stock inicial debe ser mayor a 0."); return; }
+    if (!nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.stock || !categoriaFinal) { mostrarMensaje(setErrorProducto, "Completa todos los campos."); return; }
+    if (parseInt(nuevoProducto.stock) <= 0) { mostrarMensaje(setErrorProducto, "El stock inicial debe ser mayor a 0."); return; }
     const nombreGuardado = nuevoProducto.nombre;
     try {
       await axios.post(`${API_URL}/inventario`, {
@@ -296,14 +277,14 @@ function App() {
         categoria: categoriaFinal
       });
       setNuevoProducto({ nombre: "", precio: "", stock: "", categoria: "", categoriaCustom: "" });
-      setExitoProducto(`✅ Producto "${nombreGuardado}" agregado.`);
+      mostrarMensaje(setExitoProducto, `✅ Producto "${nombreGuardado}" agregado.`);
       await obtenerInventario();
-    } catch (e) { setErrorProducto("Error al crear el producto."); }
+    } catch (e) { mostrarMensaje(setErrorProducto, "Error al crear el producto."); }
   };
 
   const categoriasExistentes = [...new Set(inventario.map(p => p.categoria).filter(Boolean))];
   const productoSeleccionado = inventario.find(p => p.id === nuevaVenta.productoId);
-  const totalVentas   = ventas.reduce((acc, v) => acc + (v.total || 0), 0);
+  const totalVentas    = ventas.reduce((acc, v) => acc + (v.total || 0), 0);
   const totalProductos = inventario.reduce((acc, p) => acc + p.stock, 0);
   const esVendedor = sesion?.rol === "vendedor";
   const esCliente  = sesion?.rol === "cliente";
@@ -316,8 +297,6 @@ function App() {
   if (esCliente) return (
     <div style={styles.app}>
       {facturaVenta && <ModalFactura venta={facturaVenta} onClose={() => setFacturaVenta(null)} />}
-
-      {/* Header cliente */}
       <div style={styles.header}>
         <div style={styles.headerTop}>
           <img src="https://www.unilibre.edu.co/wp-content/uploads/2026/03/Escudo-Unilibre.png"
@@ -333,7 +312,6 @@ function App() {
         </div>
       </div>
 
-      {/* Productos disponibles */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>🏪 Productos Disponibles</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
@@ -350,11 +328,10 @@ function App() {
         </div>
       </div>
 
-      {/* Registrar compra */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>🧾 Realizar Compra</h2>
-        {error  && <div style={styles.alertError}>{error}</div>}
-        {exito  && <div style={styles.alertSuccess}>{exito}</div>}
+        {error && <div style={styles.alertError}>{error}</div>}
+        {exito && <div style={styles.alertSuccess}>{exito}</div>}
         <div style={styles.formRow}>
           <select value={nuevaVenta.productoId}
             onChange={(e) => setNuevaVenta({ ...nuevaVenta, productoId: e.target.value })} style={styles.select}>
@@ -373,16 +350,11 @@ function App() {
         </div>
       </div>
 
-      {/* Historial de compras del cliente — solo lectura, con botón factura */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>📋 Mis Compras</h2>
         <table style={styles.table}>
           <thead>
-            <tr>
-              {["Producto","Cantidad","Precio Unit.","Total","Factura"].map(h => (
-                <th key={h} style={styles.th}>{h}</th>
-              ))}
-            </tr>
+            <tr>{["Producto","Cantidad","Precio Unit.","Total","Factura"].map(h => <th key={h} style={styles.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {ventas.map((venta, index) => (
@@ -405,13 +377,12 @@ function App() {
   );
 
   // ─────────────────────────────────────────
-  // VISTA VENDEDOR (acceso completo)
+  // VISTA VENDEDOR
   // ─────────────────────────────────────────
   return (
     <div style={styles.app}>
       {facturaVenta && <ModalFactura venta={facturaVenta} onClose={() => setFacturaVenta(null)} />}
 
-      {/* Header */}
       <div style={styles.header}>
         <div style={styles.headerTop}>
           <img src="https://www.unilibre.edu.co/wp-content/uploads/2026/03/Escudo-Unilibre.png"
@@ -427,14 +398,12 @@ function App() {
         </div>
       </div>
 
-      {/* Stats */}
       <div style={styles.statsRow}>
         <div style={styles.statCard}><div style={styles.statValue}>{ventas.length}</div><div style={styles.statLabel}>Total Ventas</div></div>
         <div style={styles.statCard}><div style={styles.statValue}>${totalVentas.toLocaleString()}</div><div style={styles.statLabel}>Ingresos Totales</div></div>
         <div style={styles.statCard}><div style={styles.statValue}>{totalProductos}</div><div style={styles.statLabel}>Unidades en Stock</div></div>
       </div>
 
-      {/* Agregar Producto */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>➕ Agregar Producto al Inventario</h2>
         {errorProducto && <div style={styles.alertError}>{errorProducto}</div>}
@@ -462,7 +431,6 @@ function App() {
         </div>
       </div>
 
-      {/* Registrar Venta */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>🧾 Registrar Venta</h2>
         {error  && <div style={styles.alertError}>{error}</div>}
@@ -485,7 +453,6 @@ function App() {
         </div>
       </div>
 
-      {/* Tabla Ventas */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>📊 Ventas Registradas</h2>
         <table style={styles.table}>
@@ -512,7 +479,6 @@ function App() {
         </table>
       </div>
 
-      {/* Gráfica */}
       <div style={{ ...styles.card, height: "380px" }}>
         <h2 style={styles.cardTitle}>📈 Gráfica de Ventas por Producto</h2>
         <ResponsiveContainer width="100%" height="85%">
@@ -526,7 +492,6 @@ function App() {
         </ResponsiveContainer>
       </div>
 
-      {/* Inventario */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>📦 Inventario</h2>
         <table style={styles.table}>
