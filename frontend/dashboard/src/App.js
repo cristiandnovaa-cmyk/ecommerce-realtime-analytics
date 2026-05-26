@@ -63,7 +63,6 @@ const styles = {
 // ── Modal Factura ──
 function ModalFactura({ venta, onClose }) {
   if (!venta) return null;
-
   const fecha = new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" });
   const hora  = new Date().toLocaleTimeString("es-CO");
   const nroFactura = `FAC-${venta.id?.toString().slice(-6).toUpperCase() || "000000"}`;
@@ -73,27 +72,21 @@ function ModalFactura({ venta, onClose }) {
     doc.setFillColor(200, 16, 46);
     doc.rect(0, 0, 210, 36, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18); doc.setFont("helvetica", "bold");
     doc.text("E-Commerce Analytics", 14, 16);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10); doc.setFont("helvetica", "normal");
     doc.text("Universidad Libre de Colombia", 14, 25);
     doc.text(`Factura N°: ${nroFactura}`, 14, 32);
     doc.setTextColor(30, 30, 30);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11); doc.setFont("helvetica", "bold");
     doc.text("FACTURA DE VENTA", 14, 50);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
     doc.text(`Fecha: ${fecha}`, 14, 58);
     doc.text(`Hora: ${hora}`, 14, 64);
     doc.text(`N° Factura: ${nroFactura}`, 14, 70);
-    doc.setDrawColor(200, 16, 46);
-    doc.setLineWidth(0.5);
+    doc.setDrawColor(200, 16, 46); doc.setLineWidth(0.5);
     doc.line(14, 76, 196, 76);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
     doc.text("Detalle de la compra", 14, 84);
     const filas = [
       ["Producto",        venta.producto],
@@ -103,25 +96,19 @@ function ModalFactura({ venta, onClose }) {
       ["Descuento",       `$${venta.descuento?.toLocaleString()}`],
     ];
     let y = 92;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
     filas.forEach(([label, valor], i) => {
       if (i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(14, y - 4, 182, 8, "F"); }
       doc.setTextColor(80, 80, 80); doc.text(label, 18, y + 1);
       doc.setTextColor(30, 30, 30); doc.text(valor, 140, y + 1);
       y += 10;
     });
-    doc.setFillColor(200, 16, 46);
-    doc.rect(14, y, 182, 12, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
+    doc.setFillColor(200, 16, 46); doc.rect(14, y, 182, 12, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
     doc.text("TOTAL", 18, y + 8);
     doc.text(`$${venta.total?.toLocaleString()}`, 140, y + 8);
     y += 24;
-    doc.setTextColor(120, 120, 120);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
+    doc.setTextColor(120, 120, 120); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
     doc.text("Gracias por su compra.", 105, y, { align: "center" });
     doc.text("Universidad Libre de Colombia — Proyecto de Programación 2026", 105, y + 6, { align: "center" });
     doc.save(`factura-${nroFactura}.pdf`);
@@ -222,7 +209,6 @@ function App() {
 
   const formatearPrecio = (valor) => valor.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
-  // ── Helper: muestra mensaje y lo borra tras 3 segundos ──
   const mostrarMensaje = (setter, mensaje) => {
     setter(mensaje);
     setTimeout(() => setter(""), 3000);
@@ -239,19 +225,21 @@ function App() {
     try {
       const respuesta = await axios.post(`${API_URL}/ventas`, { producto: p.nombre, cantidad, precioUnitario: p.precio });
       setNuevaVenta({ productoId: "", cantidad: "" });
-      mostrarMensaje(setExito, "✅ Venta registrada. Puedes descargar tu factura.");
+      mostrarMensaje(setExito, "✅ Compra registrada. Puedes descargar tu factura.");
       await obtenerVentas();
       await obtenerInventario();
       setFacturaVenta(respuesta.data);
-    } catch (e) { mostrarMensaje(setError, "Error al registrar la venta."); }
+    } catch (e) { mostrarMensaje(setError, "Error al registrar la compra."); }
   };
 
+  // ── eliminarVenta: restaura stock y elimina — usada por vendedor Y cliente ──
   const eliminarVenta = async (venta) => {
     try {
       const p = inventario.find(p => p.nombre.toLowerCase() === venta.producto.toLowerCase());
-      if (p) await axios.put(`${API_URL}/inventario/${p.id}/stock?cantidad=${-venta.cantidad}`);
+      if (p) await axios.put(`${API_URL}/inventario/${p.id}/stock?cantidad=${venta.cantidad}`); // ← suma de vuelta
       await axios.delete(`${API_URL}/ventas/${venta.id}`);
-      obtenerVentas(); obtenerInventario();
+      await obtenerVentas();
+      await obtenerInventario();
     } catch (e) { console.log(e); }
   };
 
@@ -350,11 +338,12 @@ function App() {
         </div>
       </div>
 
+      {/* ── Mis Compras — con botón cancelar que restaura stock ── */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>📋 Mis Compras</h2>
         <table style={styles.table}>
           <thead>
-            <tr>{["Producto","Cantidad","Precio Unit.","Total","Factura"].map(h => <th key={h} style={styles.th}>{h}</th>)}</tr>
+            <tr>{["Producto","Cantidad","Precio Unit.","Total","Factura","Cancelar"].map(h => <th key={h} style={styles.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {ventas.map((venta, index) => (
@@ -365,6 +354,9 @@ function App() {
                 <td style={{ ...(index % 2 === 0 ? styles.tdEven : styles.tdOdd), color: UNILIBRE_RED, fontWeight: "bold" }}>${venta.total?.toLocaleString()}</td>
                 <td style={index % 2 === 0 ? styles.tdEven : styles.tdOdd}>
                   <button onClick={() => setFacturaVenta(venta)} style={styles.btnFactura}>📄 Ver factura</button>
+                </td>
+                <td style={index % 2 === 0 ? styles.tdEven : styles.tdOdd}>
+                  <button onClick={() => eliminarVenta(venta)} style={styles.btnDanger}>❌ Cancelar</button>
                 </td>
               </tr>
             ))}
