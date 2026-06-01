@@ -20,6 +20,7 @@ public class VentasService {
 
     private final VentaRepository ventaRepository;
     private final VentaLogRepository ventaLogRepository;
+    // Orientado a mensajes los microservicios se comunican mediante llamadas de HTTP reactivas con WebClient 4 Principio
     private final WebClient webClient = WebClient.create("http://localhost:8082");
 
     // Función para calcular impuesto (19% IVA) - programación funcional
@@ -29,7 +30,7 @@ public class VentasService {
     // Función para calcular descuento - programación funcional
     private final Function<Double, Double> calcularDescuento = 
         precioBase -> precioBase * 0.10;
-
+// No bloquea el hilo esperando la base de datos primer principio de la Programcion Reactiva : Responsivo
     public Flux<Venta> obtenerTodas() {
         return ventaRepository.findAll();
     }
@@ -73,6 +74,7 @@ public class VentasService {
                             .retrieve()
                             .bodyToMono(Void.class);
                     })
+// Si algo falla el sistema lo maneja sin caerse este es el segundo principio de la Programacion Reactiva : Resiliente                    
                     .onErrorResume(e -> Mono.empty());
 
                 return ventaLogRepository.save(log)
@@ -86,6 +88,7 @@ public class VentasService {
     }
 
     public Flux<Map<String, Object>> ventasPorProducto() {
+        // Usando el Flux el sistema procesa los datos a medida que llegan no todos de golpe este es el tercer principio de la Programacion Reactiva : Elasticidad
         return ventaRepository.findAll()
             .groupBy(v -> v.getProducto())
             .flatMap(group -> group.reduce(0.0, (acc, venta) -> acc + venta.getTotal())

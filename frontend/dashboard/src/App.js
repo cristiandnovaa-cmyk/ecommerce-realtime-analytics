@@ -7,6 +7,9 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
 const UNILIBRE_RED = "#C8102E";
 const UNILIBRE_DARK = "#000000";
 
+const GOOGLE_API_KEY = "AIzaSyDG1IWO8hciqMjRE3Kr-xozJn2U1bJRbLo";
+const GOOGLE_CX      = "b2723e99b040e4b27";
+
 const USUARIOS = [
   { usuario: "vendedor1", password: "venta123", rol: "vendedor" },
   { usuario: "cliente1",  password: "cliente123", rol: "cliente" },
@@ -58,9 +61,50 @@ const styles = {
   facturaRow: { display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f1f5f9", fontSize: "14px" },
   facturaTotal: { display: "flex", justifyContent: "space-between", padding: "12px 0", fontSize: "16px", fontWeight: "700", color: UNILIBRE_RED, borderTop: "2px solid " + UNILIBRE_RED, marginTop: "8px" },
   modalBtns: { display: "flex", gap: "10px", marginTop: "24px", justifyContent: "center" },
+  // Estilos para tabla de sesiones
+  sesionAccion: { background: "#0a0f1e", padding: "3px 8px", borderRadius: "4px", fontSize: "11px", color: "#94a3b8", display: "inline-block", margin: "2px" },
 };
 
-// ── Modal Factura ──
+const imageCache = {};
+
+function ProductoCard({ producto }) {
+  const [imagen, setImagen] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const buscarImagen = async () => {
+      if (imageCache[producto.nombre]) { setImagen(imageCache[producto.nombre]); setCargando(false); return; }
+      try {
+        const query = encodeURIComponent(`${producto.nombre}`);
+        const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CX}&q=${query}&searchType=image&num=1`;
+        const r = await axios.get(url);
+        const img = r.data.items?.[0]?.link || null;
+        imageCache[producto.nombre] = img;
+        setImagen(img);
+      } catch (e) { setImagen(null); } finally { setCargando(false); }
+    };
+    buscarImagen();
+  }, [producto.nombre]);
+
+  return (
+    <div style={{ background: "#0a0f1e", borderRadius: "10px", overflow: "hidden", border: `1px solid ${producto.stock === 0 ? "#450a0a" : "#1e3a5f"}` }}>
+      <div style={{ width: "100%", height: "160px", background: "#0d1526", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        {cargando ? <div style={{ color: "#334155", fontSize: "12px" }}>🔍 Buscando...</div>
+          : imagen ? <img src={imagen} alt={producto.nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.target.style.display = "none"; }} />
+          : <div style={{ color: "#334155", fontSize: "28px" }}>🛒</div>}
+      </div>
+      <div style={{ padding: "14px" }}>
+        <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "4px" }}>{producto.categoria}</div>
+        <div style={{ fontWeight: "700", fontSize: "15px", color: "white", marginBottom: "8px" }}>{producto.nombre}</div>
+        <div style={{ color: "#60a5fa", fontWeight: "600", fontSize: "15px", marginBottom: "8px" }}>${producto.precio?.toLocaleString()}</div>
+        <div style={{ fontSize: "12px", color: producto.stock === 0 ? "#fca5a5" : producto.stock <= 2 ? "#fbbf24" : "#86efac" }}>
+          {producto.stock === 0 ? "❌ Agotado" : producto.stock <= 2 ? `⚠️ Últimas ${producto.stock} unidades` : `✅ ${producto.stock} disponibles`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModalFactura({ venta, onClose }) {
   if (!venta) return null;
   const fecha = new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" });
@@ -69,32 +113,19 @@ function ModalFactura({ venta, onClose }) {
 
   const descargarPDF = () => {
     const doc = new jsPDF();
-    doc.setFillColor(200, 16, 46);
-    doc.rect(0, 0, 210, 36, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18); doc.setFont("helvetica", "bold");
+    doc.setFillColor(200, 16, 46); doc.rect(0, 0, 210, 36, "F");
+    doc.setTextColor(255, 255, 255); doc.setFontSize(18); doc.setFont("helvetica", "bold");
     doc.text("E-Commerce Analytics", 14, 16);
     doc.setFontSize(10); doc.setFont("helvetica", "normal");
     doc.text("Universidad Libre de Colombia", 14, 25);
     doc.text(`Factura N°: ${nroFactura}`, 14, 32);
-    doc.setTextColor(30, 30, 30);
-    doc.setFontSize(11); doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 30, 30); doc.setFontSize(11); doc.setFont("helvetica", "bold");
     doc.text("FACTURA DE VENTA", 14, 50);
     doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-    doc.text(`Fecha: ${fecha}`, 14, 58);
-    doc.text(`Hora: ${hora}`, 14, 64);
-    doc.text(`N° Factura: ${nroFactura}`, 14, 70);
-    doc.setDrawColor(200, 16, 46); doc.setLineWidth(0.5);
-    doc.line(14, 76, 196, 76);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-    doc.text("Detalle de la compra", 14, 84);
-    const filas = [
-      ["Producto",        venta.producto],
-      ["Cantidad",        String(venta.cantidad)],
-      ["Precio unitario", `$${venta.precioUnitario?.toLocaleString()}`],
-      ["Impuesto",        `$${venta.impuesto?.toLocaleString()}`],
-      ["Descuento",       `$${venta.descuento?.toLocaleString()}`],
-    ];
+    doc.text(`Fecha: ${fecha}`, 14, 58); doc.text(`Hora: ${hora}`, 14, 64); doc.text(`N° Factura: ${nroFactura}`, 14, 70);
+    doc.setDrawColor(200, 16, 46); doc.setLineWidth(0.5); doc.line(14, 76, 196, 76);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text("Detalle de la compra", 14, 84);
+    const filas = [["Producto", venta.producto], ["Cantidad", String(venta.cantidad)], ["Precio unitario", `$${venta.precioUnitario?.toLocaleString()}`], ["Impuesto", `$${venta.impuesto?.toLocaleString()}`], ["Descuento", `$${venta.descuento?.toLocaleString()}`]];
     let y = 92;
     doc.setFont("helvetica", "normal"); doc.setFontSize(10);
     filas.forEach(([label, valor], i) => {
@@ -105,8 +136,7 @@ function ModalFactura({ venta, onClose }) {
     });
     doc.setFillColor(200, 16, 46); doc.rect(14, y, 182, 12, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text("TOTAL", 18, y + 8);
-    doc.text(`$${venta.total?.toLocaleString()}`, 140, y + 8);
+    doc.text("TOTAL", 18, y + 8); doc.text(`$${venta.total?.toLocaleString()}`, 140, y + 8);
     y += 24;
     doc.setTextColor(120, 120, 120); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
     doc.text("Gracias por su compra.", 105, y, { align: "center" });
@@ -114,15 +144,11 @@ function ModalFactura({ venta, onClose }) {
     doc.save(`factura-${nroFactura}.pdf`);
   };
 
-  const imprimir = () => window.print();
-
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
       <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
         <div style={{ textAlign: "center", marginBottom: "8px" }}>
-          <div style={{ background: UNILIBRE_RED, color: "white", padding: "6px 18px", borderRadius: "20px", display: "inline-block", fontSize: "12px", fontWeight: "600" }}>
-            {nroFactura}
-          </div>
+          <div style={{ background: UNILIBRE_RED, color: "white", padding: "6px 18px", borderRadius: "20px", display: "inline-block", fontSize: "12px", fontWeight: "600" }}>{nroFactura}</div>
         </div>
         <p style={styles.modalTitle}>Factura de Venta</p>
         <p style={styles.modalSub}>Universidad Libre de Colombia<br />{fecha} — {hora}</p>
@@ -137,15 +163,14 @@ function ModalFactura({ venta, onClose }) {
         <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8" }}>Gracias por su compra 🎉</p>
         <div style={styles.modalBtns}>
           <button onClick={descargarPDF} style={{ ...styles.btnPrimary, fontSize: "13px" }}>⬇️ Descargar PDF</button>
-          <button onClick={imprimir}     style={{ ...styles.btnFactura, padding: "10px 20px" }}>🖨️ Imprimir</button>
-          <button onClick={onClose}      style={{ ...styles.btnLogout, padding: "10px 20px" }}>Cerrar</button>
+          <button onClick={window.print} style={{ ...styles.btnFactura, padding: "10px 20px" }}>🖨️ Imprimir</button>
+          <button onClick={onClose} style={{ ...styles.btnLogout, padding: "10px 20px" }}>Cerrar</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Login ──
 function Login({ onLogin }) {
   const [form, setForm] = useState({ usuario: "", password: "" });
   const [errorLogin, setErrorLogin] = useState("");
@@ -192,6 +217,7 @@ function Login({ onLogin }) {
 // ── App principal ──
 function App() {
   const [sesion, setSesion] = useState(null);
+  const [sesionId, setSesionId] = useState(null); // ID de sesión en MongoDB
   const [ventas, setVentas] = useState([]);
   const [inventario, setInventario] = useState([]);
   const [nuevaVenta, setNuevaVenta] = useState({ productoId: "", cantidad: "" });
@@ -201,11 +227,46 @@ function App() {
   const [errorProducto, setErrorProducto] = useState("");
   const [exitoProducto, setExitoProducto] = useState("");
   const [facturaVenta, setFacturaVenta] = useState(null);
+  const [sesiones, setSesiones] = useState([]);
 
-  useEffect(() => { if (sesion) { obtenerVentas(); obtenerInventario(); } }, [sesion]);
+  useEffect(() => { if (sesion) { obtenerVentas(); obtenerInventario(); obtenerSesiones(); } }, [sesion]);
 
   const obtenerVentas     = async () => { try { const r = await axios.get(`${API_URL}/ventas`);     setVentas(r.data);    } catch (e) { console.log(e); } };
   const obtenerInventario = async () => { try { const r = await axios.get(`${API_URL}/inventario`); setInventario(r.data); } catch (e) { console.log(e); } };
+  const obtenerSesiones   = async () => { try { const r = await axios.get(`${API_URL}/sesiones`);  setSesiones(r.data);  } catch (e) { console.log(e); } };
+
+  // ── Registrar acción en MongoDB ──
+  const registrarAccion = async (id, accion) => {
+    try {
+      await axios.put(`${API_URL}/sesiones/${id}/accion`, { accion });
+    } catch (e) { console.log(e); }
+  };
+
+  // ── Login con registro de sesión en MongoDB ──
+  const handleLogin = async (usuario) => {
+    try {
+      const r = await axios.post(`${API_URL}/sesiones/iniciar`, {
+        usuario: usuario.usuario,
+        rol: usuario.rol
+      });
+      setSesionId(r.data.id);
+      setSesion(usuario);
+    } catch (e) {
+      // Si falla el registro de sesión igual dejamos entrar
+      setSesion(usuario);
+    }
+  };
+
+  // ── Logout con cierre de sesión en MongoDB ──
+  const handleLogout = async () => {
+    try {
+      if (sesionId) {
+        await axios.put(`${API_URL}/sesiones/${sesionId}/cerrar`);
+      }
+    } catch (e) { console.log(e); }
+    setSesion(null);
+    setSesionId(null);
+  };
 
   const formatearPrecio = (valor) => valor.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
@@ -226,29 +287,42 @@ function App() {
       const respuesta = await axios.post(`${API_URL}/ventas`, { producto: p.nombre, cantidad, precioUnitario: p.precio });
       setNuevaVenta({ productoId: "", cantidad: "" });
       mostrarMensaje(setExito, "✅ Compra registrada. Puedes descargar tu factura.");
+      // Registrar acción en MongoDB
+      if (sesionId) await registrarAccion(sesionId, `Registró venta de ${cantidad} x ${p.nombre} por $${respuesta.data.total?.toLocaleString()}`);
       await obtenerVentas();
       await obtenerInventario();
       setFacturaVenta(respuesta.data);
     } catch (e) { mostrarMensaje(setError, "Error al registrar la compra."); }
   };
 
-  // ── eliminarVenta: restaura stock y elimina — usada por vendedor Y cliente ──
   const eliminarVenta = async (venta) => {
     try {
       const p = inventario.find(p => p.nombre.toLowerCase() === venta.producto.toLowerCase());
-      if (p) await axios.put(`${API_URL}/inventario/${p.id}/stock?cantidad=${venta.cantidad}`); // ← suma de vuelta
+      if (p) await axios.put(`${API_URL}/inventario/${p.id}/stock?cantidad=${venta.cantidad}`);
       await axios.delete(`${API_URL}/ventas/${venta.id}`);
+      // Registrar acción en MongoDB
+      if (sesionId) await registrarAccion(sesionId, `Eliminó venta de ${venta.producto} (ID: ${venta.id})`);
       await obtenerVentas();
       await obtenerInventario();
     } catch (e) { console.log(e); }
   };
 
-  const agregarStock = async (id) => {
-    try { await axios.put(`${API_URL}/inventario/${id}/stock?cantidad=1`); obtenerInventario(); } catch (e) { console.log(e); }
+  const agregarStock = async (id, nombre) => {
+    try {
+      await axios.put(`${API_URL}/inventario/${id}/stock?cantidad=1`);
+      // Registrar acción en MongoDB
+      if (sesionId) await registrarAccion(sesionId, `Agregó 1 unidad de stock a ${nombre}`);
+      obtenerInventario();
+    } catch (e) { console.log(e); }
   };
 
-  const eliminarProducto = async (id) => {
-    try { await axios.delete(`${API_URL}/inventario/${id}`); setInventario(inventario.filter(p => p.id !== id)); } catch (e) { console.log(e); }
+  const eliminarProducto = async (id, nombre) => {
+    try {
+      await axios.delete(`${API_URL}/inventario/${id}`);
+      // Registrar acción en MongoDB
+      if (sesionId) await registrarAccion(sesionId, `Eliminó producto ${nombre} del inventario`);
+      setInventario(inventario.filter(p => p.id !== id));
+    } catch (e) { console.log(e); }
   };
 
   const crearProducto = async () => {
@@ -266,6 +340,8 @@ function App() {
       });
       setNuevoProducto({ nombre: "", precio: "", stock: "", categoria: "", categoriaCustom: "" });
       mostrarMensaje(setExitoProducto, `✅ Producto "${nombreGuardado}" agregado.`);
+      // Registrar acción en MongoDB
+      if (sesionId) await registrarAccion(sesionId, `Agregó producto ${nombreGuardado} al inventario`);
       await obtenerInventario();
     } catch (e) { mostrarMensaje(setErrorProducto, "Error al crear el producto."); }
   };
@@ -274,15 +350,13 @@ function App() {
   const productoSeleccionado = inventario.find(p => p.id === nuevaVenta.productoId);
   const totalVentas    = ventas.reduce((acc, v) => acc + (v.total || 0), 0);
   const totalProductos = inventario.reduce((acc, p) => acc + p.stock, 0);
-  const esVendedor = sesion?.rol === "vendedor";
-  const esCliente  = sesion?.rol === "cliente";
 
-  if (!sesion) return <Login onLogin={setSesion} />;
+  if (!sesion) return <Login onLogin={handleLogin} />;
 
   // ─────────────────────────────────────────
   // VISTA CLIENTE
   // ─────────────────────────────────────────
-  if (esCliente) return (
+  if (sesion.rol === "cliente") return (
     <div style={styles.app}>
       {facturaVenta && <ModalFactura venta={facturaVenta} onClose={() => setFacturaVenta(null)} />}
       <div style={styles.header}>
@@ -296,23 +370,14 @@ function App() {
             <span style={styles.badge}>Programación — 2026</span>
             <span style={styles.rolBadge("cliente")}>🔵 {sesion.usuario} (cliente)</span>
           </div>
-          <button onClick={() => setSesion(null)} style={styles.btnLogout}>Cerrar sesión</button>
+          <button onClick={handleLogout} style={styles.btnLogout}>Cerrar sesión</button>
         </div>
       </div>
 
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>🏪 Productos Disponibles</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
-          {inventario.map((producto, i) => (
-            <div key={i} style={{ background: "#0a0f1e", borderRadius: "10px", padding: "16px", border: `1px solid ${producto.stock === 0 ? "#450a0a" : "#1e3a5f"}` }}>
-              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "4px" }}>{producto.categoria}</div>
-              <div style={{ fontWeight: "700", fontSize: "16px", color: "white", marginBottom: "8px" }}>{producto.nombre}</div>
-              <div style={{ color: "#60a5fa", fontWeight: "600", fontSize: "15px", marginBottom: "8px" }}>${producto.precio?.toLocaleString()}</div>
-              <div style={{ fontSize: "12px", color: producto.stock === 0 ? "#fca5a5" : producto.stock <= 2 ? "#fbbf24" : "#86efac" }}>
-                {producto.stock === 0 ? "❌ Agotado" : producto.stock <= 2 ? `⚠️ Últimas ${producto.stock} unidades` : `✅ ${producto.stock} disponibles`}
-              </div>
-            </div>
-          ))}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" }}>
+          {inventario.map((producto, i) => <ProductoCard key={i} producto={producto} />)}
         </div>
       </div>
 
@@ -338,7 +403,6 @@ function App() {
         </div>
       </div>
 
-      {/* ── Mis Compras — con botón cancelar que restaura stock ── */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>📋 Mis Compras</h2>
         <table style={styles.table}>
@@ -386,7 +450,7 @@ function App() {
             <span style={styles.badge}>Programación — 2026</span>
             <span style={styles.rolBadge(sesion.rol)}>🟢 {sesion.usuario} (vendedor)</span>
           </div>
-          <button onClick={() => setSesion(null)} style={styles.btnLogout}>Cerrar sesión</button>
+          <button onClick={handleLogout} style={styles.btnLogout}>Cerrar sesión</button>
         </div>
       </div>
 
@@ -506,8 +570,37 @@ function App() {
                   </span>
                 </td>
                 <td style={index % 2 === 0 ? styles.tdEven : styles.tdOdd}>
-                  <button onClick={() => agregarStock(producto.id)} style={styles.btnStock}>+ Stock</button>
-                  <button onClick={() => eliminarProducto(producto.id)} style={styles.btnDanger}>Eliminar</button>
+                  <button onClick={() => agregarStock(producto.id, producto.nombre)} style={styles.btnStock}>+ Stock</button>
+                  <button onClick={() => eliminarProducto(producto.id, producto.nombre)} style={styles.btnDanger}>Eliminar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Historial de Sesiones (solo vendedor) ── */}
+      <div style={styles.card}>
+        <h2 style={styles.cardTitle}>🔐 Historial de Sesiones</h2>
+        <table style={styles.table}>
+          <thead>
+            <tr>{["Usuario","Rol","Ingreso","Cierre","Acciones realizadas"].map(h => <th key={h} style={styles.th}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {sesiones.map((s, index) => (
+              <tr key={index}>
+                <td style={index % 2 === 0 ? styles.tdEven : styles.tdOdd}>{s.usuario}</td>
+                <td style={index % 2 === 0 ? styles.tdEven : styles.tdOdd}>
+                  <span style={{ background: s.rol === "vendedor" ? "#22c55e" : "#3b82f6", color: s.rol === "vendedor" ? "#0f172a" : "white", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>
+                    {s.rol}
+                  </span>
+                </td>
+                <td style={index % 2 === 0 ? styles.tdEven : styles.tdOdd}>{s.fechaIngreso ? new Date(s.fechaIngreso).toLocaleString("es-CO") : "-"}</td>
+                <td style={index % 2 === 0 ? styles.tdEven : styles.tdOdd}>{s.fechaCierre ? new Date(s.fechaCierre).toLocaleString("es-CO") : <span style={{ color: "#22c55e", fontSize: "12px" }}>🟢 Activa</span>}</td>
+                <td style={index % 2 === 0 ? styles.tdEven : styles.tdOdd}>
+                  {s.accionesRealizadas?.length > 0
+                    ? s.accionesRealizadas.map((a, i) => <span key={i} style={styles.sesionAccion}>• {a}</span>)
+                    : <span style={{ color: "#334155", fontSize: "12px" }}>Sin acciones</span>}
                 </td>
               </tr>
             ))}
